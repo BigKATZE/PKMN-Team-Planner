@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #2a3fe5;
+  --color-secondary: #22c55e;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  --color-surface: #000000;
+  --color-panel: #0b0b0e;
+  --color-panel2: #131318;
+  --color-line: #1f2540;
+
+  --font-pixel: "Press Start 2P", ui-monospace, monospace;
+  --font-term: "Space Mono", ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #000000;
+  color: #ffffff;
+  font-family: var(--font-term);
+  background-image:
+    linear-gradient(rgba(42, 63, 229, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42, 63, 229, 0.055) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+::selection {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+/* Signature dotted border used across the whole system */
+.pac-border {
+  border: 2px dotted var(--color-primary);
+}
+.pac-border-soft {
+  border: 2px dotted var(--color-line);
+}
+.pac-border-danger {
+  border: 2px dotted var(--color-danger);
+}
+.pac-border-success {
+  border: 2px dotted var(--color-success);
+}
+.pac-border-secondary {
+  border: 2px dotted var(--color-secondary);
+}
+
+/* Pixelated sprites */
+.pixelated {
+  image-rendering: pixelated;
+}
+
+/* Skip layout/paint for off-screen search results so the modal stays smooth
+   even when the full national dex is listed at once. */
+.search-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 150px;
+}
+
+/* Blinking block cursor (reduced-motion handled below) */
+@keyframes pac-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.blink {
+  animation: pac-blink 1.1s steps(1) infinite;
+}
+
+/* Soft "attract mode" pulse for empty slots */
+@keyframes pac-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.pac-pulse {
+  animation: pac-pulse 1.8s steps(2) infinite;
+}
+
+/* Segmented 8pt stat meter fill */
+.meter-fill {
+  background-image: repeating-linear-gradient(
+    90deg,
+    currentColor 0,
+    currentColor 6px,
+    transparent 6px,
+    transparent 8px
+  );
+}
+
+/* Respect reduced-motion: kill animation & transitions */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
