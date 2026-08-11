@@ -36,3 +36,7 @@ Thumbs.db
 
 # Security scan reports
 strix_runs/
+
+# Agent tooling (local only)
+.agents/
+.opencode/
