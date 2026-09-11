@@ -1,7 +1,4 @@
-import { isPlainObject } from './validate'
-
-const CSV_BASE = 'https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv'
-const LS_KEY = 'pkmn_game_index_v3'
+import { fetchCsv } from './csv.js'
 
 export const GAMES = [
   { id: 1, label: 'Red', generation: 1 },
@@ -44,201 +41,35 @@ export const GAMES = [
   { id: 47, label: 'Legends: Z-A', generation: 9 }
 ]
 
-const NATIONAL_DEX_ID = 1
-
-let cache = null
-
-function isValidIdList(arr) {
-  return (
-    Array.isArray(arr) &&
-    arr.every((n) => Number.isInteger(Number(n)) && Number(n) > 0)
-  )
+export function generationForGame(game) {
+  return GAMES.find((g) => g.id === game)?.generation ?? null
 }
 
-function isValidEntry(v) {
-  // Legacy format: the entry itself was the roster array.
-  if (Array.isArray(v)) return isValidIdList(v)
-  if (!isPlainObject(v)) return false
-  if (!isValidIdList(v.roster)) return false
-  if (v.regional != null && !isValidIdList(v.regional)) return false
-  return true
-}
-
-function parseCsv(text) {
-  const lines = text.trim().split('\n')
-  const header = lines[0].split(',').map((h) => h.trim())
-  return lines.slice(1).map((line) => {
-    const cells = line.split(',')
-    const row = {}
-    header.forEach((h, i) => {
-      row[h] = (cells[i] ?? '').trim()
-    })
-    return row
-  })
-}
-
-async function fetchCsv(name) {
-  const res = await fetch(`${CSV_BASE}/${name}`)
-  if (!res.ok) throw new Error(`Game CSV failed (${res.status})`)
-  return res.text()
-}
-
-function toInt(value) {
-  const n = Number(value)
-  return Number.isFinite(n) && n > 0 ? n : null
-}
-
-/**
- * Drop sub-dexes that are strict subsets of another regional dex in the same
- * version group (e.g. Alola island dexes are contained in the combined dex).
- */
-function pruneSubsets(pokedexes) {
-  const sets = pokedexes.map((p) => new Set(p.species))
-  return pokedexes.filter((p, i) => {
-    for (let j = 0; j < pokedexes.length; j++) {
-      if (i === j) continue
-      const other = sets[j]
-      if (other.size < sets[i].size) continue
-      if ([...sets[i]].every((s) => other.has(s))) return false
-    }
-    return true
-  })
-}
-
-/**
- * Build a Map<versionId, { roster, members, regional }>.
- * roster: ordered base-species ids — regional (in-game) dex first, then the
- *         remaining national-dex additions (post-game) sorted by id.
- * members: Set of base-species ids available in the game.
- * regional: Set of base-species ids in the game's regional dex.
- * Fetched once, then cached in memory + localStorage.
- */
 export async function getGameIndex() {
-  if (cache) return cache
+  const [versions, dexGroups, dexNumbers, gameIndices, dexes] = await Promise.all([
+    fetchCsv('versions.csv'), fetchCsv('pokedex_version_groups.csv'),
+    fetchCsv('pokemon_dex_numbers.csv'), fetchCsv('pokemon_game_indices.csv'), fetchCsv('pokedexes.csv')
+  ])
+  const mainDexes = new Set(dexes.filter((d) => d.is_main_series === '1' && d.id !== '1').map((d) => d.id))
+  return new Map(GAMES.map((game) => {
+    const group = versions.find((v) => Number(v.id) === game.id)?.version_group_id
+    const dexIds = new Set(dexGroups.filter((d) => d.version_group_id === group && mainDexes.has(d.pokedex_id)).map((d) => d.pokedex_id))
+    // Unioning species IDs naturally removes overlapping sub-dex entries.
+    const regional = new Set(dexNumbers.filter((d) => dexIds.has(d.pokedex_id))
+      .sort((a, b) => Number(a.pokedex_id) - Number(b.pokedex_id) || Number(a.pokedex_number) - Number(b.pokedex_number))
+      .map((d) => Number(d.species_id)))
+    const members = new Set(gameIndices.filter((r) => Number(r.version_id) === game.id).map((r) => Number(r.pokemon_id)))
+    const roster = [...regional].filter((id) => members.has(id))
+    roster.push(...[...members].filter((id) => !regional.has(id)).sort((a, b) => a - b))
+    return [game.id, { roster, members, regional, hasData: members.size > 0 }]
+  }))
+}
 
-  try {
-    const raw = localStorage.getItem(LS_KEY)
-    if (raw) {
-      const obj = JSON.parse(raw)
-      if (
-        !isPlainObject(obj) ||
-        !Object.entries(obj).every(
-          ([vid, entry]) => Number.isInteger(Number(vid)) && Number(vid) > 0 && isValidEntry(entry)
-        )
-      ) {
-        throw new Error('Invalid game cache')
-      }
-      cache = new Map()
-      for (const [vid, entry] of Object.entries(obj)) {
-        const roster = entry.roster ?? entry
-        cache.set(Number(vid), {
-          roster,
-          members: new Set(roster),
-          regional: new Set(entry.regional ?? roster)
-        })
-      }
-      return cache
-    }
-  } catch {
-    // fall through to network
-  }
-
-  const [versionsCsv, pokedexesCsv, dexGroupCsv, dexNumbersCsv, gameIndicesCsv] =
-    await Promise.all([
-      fetchCsv('versions.csv'),
-      fetchCsv('pokedexes.csv'),
-      fetchCsv('pokedex_version_groups.csv'),
-      fetchCsv('pokemon_dex_numbers.csv'),
-      fetchCsv('pokemon_game_indices.csv')
-    ])
-
-  const versionGroupOf = new Map()
-  for (const v of parseCsv(versionsCsv)) {
-    versionGroupOf.set(Number(v.id), toInt(v.version_group_id))
-  }
-
-  const mainSeriesDex = new Set(
-    parseCsv(pokedexesCsv)
-      .filter((d) => d.is_main_series === '1' && Number(d.id) !== NATIONAL_DEX_ID)
-      .map((d) => Number(d.id))
-  )
-
-  const groupPokedexes = new Map()
-  for (const d of parseCsv(dexGroupCsv)) {
-    const gid = toInt(d.version_group_id)
-    const pid = toInt(d.pokedex_id)
-    if (gid == null || pid == null || !mainSeriesDex.has(pid)) continue
-    if (!groupPokedexes.has(gid)) groupPokedexes.set(gid, [])
-    groupPokedexes.get(gid).push(pid)
-  }
-
-  const dexSpecies = new Map()
-  for (const d of parseCsv(dexNumbersCsv)) {
-    const pid = toInt(d.pokedex_id)
-    const sid = toInt(d.species_id)
-    const num = toInt(d.pokedex_number)
-    if (pid == null || sid == null || num == null) continue
-    if (!dexSpecies.has(pid)) dexSpecies.set(pid, [])
-    dexSpecies.get(pid).push({ sid, num })
-  }
-
-  const regionalOrderByGroup = new Map()
-  for (const [gid, pids] of groupPokedexes) {
-    const dexes = pids
-      .map((pid) => ({
-        pid,
-        species: (dexSpecies.get(pid) ?? []).slice().sort((a, b) => a.num - b.num)
-      }))
-      .filter((d) => d.species.length > 0)
-    const pruned = pruneSubsets(dexes)
-    const seen = new Set()
-    const ordered = []
-    for (const dex of pruned.sort((a, b) => a.pid - b.pid)) {
-      for (const { sid } of dex.species) {
-        if (!seen.has(sid)) {
-          seen.add(sid)
-          ordered.push(sid)
-        }
-      }
-    }
-    regionalOrderByGroup.set(gid, ordered)
-  }
-
-  const gameMembers = new Map()
-  for (const r of parseCsv(gameIndicesCsv)) {
-    const vid = toInt(r.version_id)
-    const pid = toInt(r.pokemon_id)
-    if (vid == null || pid == null) continue
-    if (!gameMembers.has(vid)) gameMembers.set(vid, new Set())
-    gameMembers.get(vid).add(pid)
-  }
-
-  const index = new Map()
-  for (const game of GAMES) {
-    const vid = game.id
-    const members = gameMembers.get(vid) ?? new Set()
-    const gid = versionGroupOf.get(vid)
-    const regional = (gid != null ? regionalOrderByGroup.get(gid) : []) ?? []
-    const regionalSet = new Set(regional)
-
-    const roster = [
-      ...regional.filter((sid) => members.has(sid)),
-      ...[...members].filter((sid) => !regionalSet.has(sid)).sort((a, b) => a - b)
-    ]
-
-    index.set(vid, { roster, members, regional: regionalSet })
-  }
-
-  const compact = {}
-  for (const [vid, { roster, regional }] of index) {
-    compact[vid] = { roster, regional: [...regional] }
-  }
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(compact))
-  } catch {
-    // storage may be full/unavailable; ignore
-  }
-
-  cache = index
-  return cache
+export function gameAvailability(pokemon, entry, generation) {
+  if (!entry) return { status: 'unknown', label: 'Game data unavailable' }
+  if (pokemon.generation > generation) return { status: 'unavailable', label: 'Introduced in a later generation' }
+  if (entry.members.has(pokemon.id)) return { status: 'available', label: 'In game roster' }
+  if (!pokemon.isDefault) return { status: 'unknown', label: 'Form availability unverified' }
+  if (!entry.hasData) return { status: 'unknown', label: 'Game roster unavailable' }
+  return { status: 'unavailable', label: 'Not in game roster' }
 }

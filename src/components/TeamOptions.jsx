@@ -6,7 +6,7 @@ function toggleInArray(arr, item) {
 }
 
 const chip = (active) =>
-  `h-8 border px-2 font-pixel text-[7px] transition-colors focus-visible:outline-2 focus-visible:outline-secondary ${
+  `min-h-11 border px-2 font-term text-xs transition-colors focus-visible:outline-2 focus-visible:outline-secondary ${
     active
       ? 'border-primary bg-primary text-white'
       : 'border-line text-white/70 hover:border-secondary hover:text-secondary'
@@ -23,7 +23,7 @@ export default function TeamOptions({ value, onChange, countLabel = 'TEAM SIZE' 
   return (
     <>
       <fieldset>
-        <legend className="mb-2 font-pixel text-[9px] text-white/70">{countLabel}</legend>
+        <legend className="mb-2 font-term text-sm text-white/70">{countLabel}</legend>
         <div className="flex gap-1.5">
           {[1, 2, 3, 4, 5, 6].map((n) => (
             <button
@@ -43,8 +43,8 @@ export default function TeamOptions({ value, onChange, countLabel = 'TEAM SIZE' 
       </fieldset>
 
       <fieldset>
-        <legend className="mb-2 font-pixel text-[9px] text-white/70">
-          GENERATIONS <span className="text-white/40">(MULTI-SELECT)</span>
+        <legend className="mb-2 font-term text-sm text-white/70">
+          GENERATIONS <span className="text-white/65">(MULTI-SELECT)</span>
         </legend>
         <div className="flex flex-wrap gap-1.5">
           <button onClick={() => set({ generations: [] })} className={chip(value.generations.length === 0)}>
@@ -64,7 +64,7 @@ export default function TeamOptions({ value, onChange, countLabel = 'TEAM SIZE' 
       </fieldset>
 
       <fieldset>
-        <legend className="mb-2 font-pixel text-[9px] text-white/70">EVOLUTION STAGE</legend>
+        <legend className="mb-2 font-term text-sm text-white/70">EVOLUTION STAGE</legend>
         <div className="flex flex-wrap gap-1.5">
           {[
             { id: null, label: 'ANY STAGE' },
@@ -85,12 +85,12 @@ export default function TeamOptions({ value, onChange, countLabel = 'TEAM SIZE' 
       </fieldset>
 
       <fieldset>
-        <legend className="mb-2 font-pixel text-[9px] text-white/70">GAME ROSTER</legend>
+        <legend className="mb-2 font-term text-sm text-white/70">GAME ROSTER</legend>
         <select
           value={value.game ?? ''}
           onChange={(e) => set({ game: e.target.value === '' ? null : Number(e.target.value) })}
           aria-label="Select game"
-          className="h-9 w-full border border-line bg-panel px-2 font-term text-sm text-white/85 focus:border-secondary focus:outline-none"
+          className="h-11 w-full border border-line bg-panel px-2 font-term text-sm text-white/85 focus:border-secondary focus:outline-none"
         >
           <option value="" className="bg-surface">
             ANY GAME
@@ -108,7 +108,7 @@ export default function TeamOptions({ value, onChange, countLabel = 'TEAM SIZE' 
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 font-pixel text-[9px] text-white/70">OPTIONS</legend>
+        <legend className="mb-1 font-term text-sm text-white/70">OPTIONS</legend>
 
         <label className="flex cursor-pointer items-center gap-3">
           <input

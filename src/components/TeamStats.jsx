@@ -1,17 +1,18 @@
 import { useMemo } from 'react'
 import { STAT_LABELS, STAT_ORDER } from '../lib/api'
 import { TYPES, TYPE_COLORS } from '../data/types'
-import { TYPE_CHART } from '../data/typeChart'
+import { chartForGeneration, offensiveMultiplier } from '../data/typeChart'
 
 function statColor(value) {
-  if (value >= 120) return '#15803d'
+  if (value >= 120) return '#66e397'
   if (value >= 80) return '#86efac'
   if (value >= 45) return '#f8d030'
-  return '#dc2626'
+  return '#ff9494'
 }
 
-export default function TeamStats({ team, availableTypes = TYPES }) {
+export default function TeamStats({ team, availableTypes = TYPES, generation = null }) {
   const stats = useMemo(() => {
+    const chart = chartForGeneration(generation)
     const members = team.filter(Boolean)
     if (members.length === 0) return null
 
@@ -41,10 +42,10 @@ export default function TeamStats({ team, availableTypes = TYPES }) {
     // using each member's own (STAB) types as the attacking type.
     const offense = {}
     for (const def of availableTypes) {
-      let best = 1
+      let best = 0
       for (const m of members) {
         for (const atk of m.types) {
-          best = Math.max(best, TYPE_CHART[atk][def])
+          best = Math.max(best, offensiveMultiplier([atk], [def], chart))
         }
       }
       offense[def] = best
@@ -61,13 +62,13 @@ export default function TeamStats({ team, availableTypes = TYPES }) {
       offense,
       offenseHit
     }
-  }, [team, availableTypes])
+  }, [team, availableTypes, generation])
 
   if (!stats) {
     return (
       <div className="pac-border mt-4 bg-panel p-4">
-        <h2 className="font-pixel text-[10px] text-primary">TEAM STATS</h2>
-        <p className="mt-3 font-term text-sm text-white/50">
+        <h2 className="font-term text-sm text-primary">TEAM STATS</h2>
+        <p className="mt-3 font-term text-sm text-white/65">
           Add Pokémon to see team averages.
         </p>
       </div>
@@ -77,7 +78,7 @@ export default function TeamStats({ team, availableTypes = TYPES }) {
   return (
     <div className="pac-border mt-4 bg-panel p-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-pixel text-[10px] text-primary">TEAM STATS</h2>
+        <h2 className="font-term text-sm text-primary">TEAM STATS</h2>
         <span className="font-term text-sm text-secondary">AVG BST {stats.avgBst}</span>
       </div>
 
@@ -112,23 +113,23 @@ export default function TeamStats({ team, availableTypes = TYPES }) {
 
       <dl className="mt-4 grid grid-cols-2 gap-2 font-term text-xs">
         <div className="pac-border-soft bg-panel2 p-2">
-          <dt className="text-white/50">STRONGEST</dt>
+          <dt className="text-white/65">STRONGEST</dt>
           <dd className="mt-1 font-term text-[12px] uppercase text-success">
             {stats.strongest.name} · {stats.strongest.bst}
           </dd>
         </div>
         <div className="pac-border-soft bg-panel2 p-2">
-          <dt className="text-white/50">WEAKEST</dt>
+          <dt className="text-white/65">WEAKEST</dt>
           <dd className="mt-1 font-term text-[12px] uppercase text-danger">
             {stats.weakest.name} · {stats.weakest.bst}
           </dd>
         </div>
         <div className="pac-border-soft bg-panel2 p-2">
-          <dt className="text-white/50">TYPE DIVERSITY</dt>
+          <dt className="text-white/65">TYPE DIVERSITY</dt>
           <dd className="mt-1 font-term text-[12px] text-primary">{stats.typeCount}/{availableTypes.length}</dd>
         </div>
         <div className="pac-border-soft bg-panel2 p-2">
-          <dt className="text-white/50">BEST STAT</dt>
+          <dt className="text-white/65">BEST STAT</dt>
           <dd className="mt-1 font-term text-[12px] uppercase text-secondary">
             {STAT_LABELS[stats.bestStat.key]} · {stats.bestStat.value}
           </dd>
@@ -137,10 +138,10 @@ export default function TeamStats({ team, availableTypes = TYPES }) {
 
       <div className="mt-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-pixel text-[8px] text-white/70">OFFENSIVE COVERAGE</h3>
+          <h3 className="font-term text-xs text-white/70">OFFENSIVE COVERAGE</h3>
           <span className="font-term text-sm text-success">{stats.offenseHit}/{availableTypes.length}</span>
         </div>
-        <p className="mt-1 font-term text-[11px] text-white/45">
+        <p className="mt-1 font-term text-[11px] text-white/65">
           Super-effective vs these types (STAB):
         </p>
         <div className="mt-2 grid grid-cols-6 gap-1.5">

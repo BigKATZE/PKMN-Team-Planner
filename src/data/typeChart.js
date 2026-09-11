@@ -1,4 +1,4 @@
-import { TYPES } from './types'
+import { TYPES } from './types.js'
 
 // Rows are attacker types; columns align to TYPES order (defender types).
 const ROWS = {
@@ -26,20 +26,41 @@ export const TYPE_CHART = Object.fromEntries(
   TYPES.map((atk, i) => [atk, Object.fromEntries(TYPES.map((def, j) => [def, ROWS[atk][j]]))])
 )
 
-/**
- * teamTypes: array of per-member type arrays, e.g. [['fire','flying'], ['water']]
- * Returns a map of defender type -> aggregate effectiveness multiplier.
- */
-export function defenseCoverage(teamTypes) {
-  const result = {}
-  for (const def of TYPES) {
-    let mult = 1
-    for (const memberTypes of teamTypes) {
-      for (const t of memberTypes) {
-        mult *= TYPE_CHART[def][t]
-      }
-    }
-    result[def] = mult
+// Historical overrides from PokeAPI type_efficacy_past.csv (last affected generation).
+export function chartForGeneration(generation = null) {
+  const chart = Object.fromEntries(Object.entries(TYPE_CHART).map(([type, row]) => [type, { ...row }]))
+  if (generation != null && generation <= 5) {
+    chart.ghost.steel = 0.5
+    chart.dark.steel = 0.5
   }
-  return result
+  if (generation === 1) {
+    chart.poison.bug = 2
+    chart.bug.poison = 2
+    chart.ghost.psychic = 0
+    chart.ice.fire = 1
+  }
+  return chart
+}
+
+export function defensiveMultiplier(attackType, defendTypes, chart = TYPE_CHART) {
+  return defendTypes.reduce((mult, type) => mult * (chart[attackType]?.[type] ?? 1), 1)
+}
+
+// A move has one attacking type. Choose the best available STAB type.
+export function offensiveMultiplier(attackTypes, defendTypes, chart = TYPE_CHART) {
+  return attackTypes.length ? Math.max(...attackTypes.map((type) => defensiveMultiplier(type, defendTypes, chart))) : 1
+}
+
+export function defenseCoverage(teamTypes, chart = TYPE_CHART, availableTypes = TYPES) {
+  return Object.fromEntries(availableTypes.map((type) => {
+    const multipliers = teamTypes.map((types) => defensiveMultiplier(type, types, chart))
+    return [type, {
+      weak: multipliers.filter((m) => m > 1).length,
+      quad: multipliers.filter((m) => m === 4).length,
+      resist: multipliers.filter((m) => m > 0 && m < 1).length,
+      immune: multipliers.filter((m) => m === 0).length,
+      neutral: multipliers.filter((m) => m === 1).length,
+      multipliers
+    }]
+  }))
 }

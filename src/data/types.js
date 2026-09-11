@@ -54,15 +54,23 @@ export function typesForGeneration(gen) {
   return TYPES.filter((t) => !absent.includes(t))
 }
 
-/**
- * Filter a pokemon's type list to the types that exist in the selected
- * generation (via the available-types list). Types absent in that generation
- * are dropped — e.g. Magnemite (electric/steel) becomes pure electric in Gen 1,
- * Azumarill (water/fairy) becomes pure water before Gen 6. If every type is
- * absent (a pure-fairy species pre-Gen-6, which were previously Normal), fall
- * back to 'normal'.
- */
+export const TYPE_ID_NAME = {
+  1: 'normal', 2: 'fighting', 3: 'flying', 4: 'poison', 5: 'ground',
+  6: 'rock', 7: 'bug', 8: 'ghost', 9: 'steel', 10: 'fire',
+  11: 'water', 12: 'grass', 13: 'electric', 14: 'psychic', 15: 'ice',
+  16: 'dragon', 17: 'dark', 18: 'fairy'
+}
+
+export function pokemonTypes(pokemon, generation = null) {
+  if (!pokemon) return []
+  if (generation != null) {
+    const lastGeneration = Object.keys(pokemon.pastTypes ?? {})
+      .map(Number).filter((g) => g >= generation).sort((a, b) => a - b)[0]
+    if (lastGeneration != null) return pokemon.pastTypes[lastGeneration]
+  }
+  return pokemon.types
+}
+
 export function effectiveTypes(types, availableTypes = TYPES) {
-  const filtered = types.filter((t) => availableTypes.includes(t))
-  return filtered.length > 0 ? filtered : ['normal']
+  return types.filter((t) => availableTypes.includes(t))
 }

@@ -40,3 +40,7 @@ strix_runs/
 # Agent tooling (local only)
 .agents/
 .opencode/
+
+# Browser verification artifacts
+test-results/
+playwright-report/
