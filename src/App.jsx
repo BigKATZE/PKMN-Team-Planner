@@ -84,14 +84,26 @@ export default function App() {
     })
   }
 
+  function pickRandomGame() {
+    const limit = Math.floor(0x100000000 / GAMES.length) * GAMES.length
+    const sample = new Uint32Array(1)
+    do { crypto.getRandomValues(sample) } while (sample[0] >= limit)
+    const game = GAMES[sample[0] % GAMES.length]
+    setSelectedGame(game.id)
+    setNotice(`Random game: ${game.label}.`)
+  }
+
   return <div className="app-shell">
     <a className="skip-link" href="#team-builder">Skip to team</a>
     <header className="app-header">
       <div><h1 className="font-pixel"><span className="text-primary">PKMN</span> TEAM PLANNER</h1><p>Build a party. Find its strengths. Cover its weaknesses.</p></div>
-      <label className="field game-field">Plan for a game<select value={selectedGame ?? ''} disabled={sharedLoading} onChange={(e) => setSelectedGame(e.target.value ? Number(e.target.value) : null)}>
-        <option value="">Any game · current types</option>
-        {[...new Set(GAMES.map((g) => g.generation))].map((gen) => <optgroup key={gen} label={`Generation ${gen}`}>{GAMES.filter((g) => g.generation === gen).map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}</optgroup>)}
-      </select></label>
+      <div className="game-picker-controls">
+        <label className="field game-field">Plan for a game<select value={selectedGame ?? ''} disabled={sharedLoading} onChange={(e) => setSelectedGame(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Any game · current types</option>
+          {[...new Set(GAMES.map((g) => g.generation))].map((gen) => <optgroup key={gen} label={`Generation ${gen}`}>{GAMES.filter((g) => g.generation === gen).map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}</optgroup>)}
+        </select></label>
+        <button type="button" className="action-button" onClick={pickRandomGame} disabled={sharedLoading} aria-label="Pick a random Pokémon game">Random game</button>
+      </div>
     </header>
     <div className="status-line" role="status" aria-live="polite">{sharedLoading ? 'Opening shared team…' : notice || (saveError ? 'Automatic saving is unavailable in this browser.' : 'Your current team is saved automatically in this browser.')}</div>
     {saveError && notice && <p className="error-message">Automatic saving is unavailable. Copy a team link to keep your draft.</p>}

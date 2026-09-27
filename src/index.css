@@ -123,7 +123,8 @@ a { text-underline-offset: 4px; }
 .app-header h1 { font-size: clamp(14px, 2vw, 20px); line-height: 1.8; }
 .app-header p { color: #b8bdcd; margin-top: 10px; max-width: 55ch; }
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #c6cbda; }
-.game-field { flex: 0 0 240px; }
+.game-picker-controls { width: min(100%, 500px); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; }
+.game-field { min-width: 0; }
 .status-line { min-height: 52px; padding: 14px 0; color: #c6cbda; font-size: 13px; }
 .builder-fieldset { min-width: 0; }
 .team-toolbar, .toolbar-actions, .library-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
@@ -246,7 +247,7 @@ a { text-underline-offset: 4px; }
 @media (max-width: 760px) {
   .app-shell { padding: 20px 16px; }
   .app-header { flex-direction: column; align-items: stretch; gap: 20px; }
-  .game-field { flex-basis: auto; }
+  .game-picker-controls { width: 100%; }
   .planner-main { grid-template-columns: 1fr; }
   .analysis-area { margin-top: 8px; }
   .team-toolbar { align-items: start; }
